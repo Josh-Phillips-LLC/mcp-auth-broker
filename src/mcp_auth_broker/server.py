@@ -131,7 +131,11 @@ class MCPAuthBrokerServer:
                 event_type="result.emitted",
                 request=request,
                 trace_id=trace_id,
-                payload={"status": "error", "error_code": secret_error["error"]["code"], "duration_ms": 0},
+                payload={
+                    "status": "error",
+                    "error_code": secret_error["error"]["code"],
+                    "duration_ms": 0,
+                },
                 redactions=[{"field": "error.metadata.secret_value", "reason": "sensitive"}],
             )
             return secret_error

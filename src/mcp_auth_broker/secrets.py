@@ -70,7 +70,10 @@ class OnePasswordSecretProvider:
                 timeout=5,
             )
         except subprocess.TimeoutExpired as exc:
-            raise SecretProviderError(code="secret.timeout", message="secret provider timed out") from exc
+            raise SecretProviderError(
+                code="secret.timeout",
+                message="secret provider timed out",
+            ) from exc
         except FileNotFoundError as exc:
             raise SecretProviderError(
                 code="secret.unavailable",
@@ -82,8 +85,17 @@ class OnePasswordSecretProvider:
 
         stderr = (completed.stderr or "").lower()
         if "not found" in stderr:
-            raise SecretProviderError(code="secret.not_found", message="secret reference not found")
+            raise SecretProviderError(
+                code="secret.not_found",
+                message="secret reference not found",
+            )
         if "forbidden" in stderr or "access denied" in stderr or "unauthorized" in stderr:
-            raise SecretProviderError(code="secret.access_denied", message="secret access denied")
+            raise SecretProviderError(
+                code="secret.access_denied",
+                message="secret access denied",
+            )
 
-        raise SecretProviderError(code="secret.unavailable", message="secret provider unavailable")
+        raise SecretProviderError(
+            code="secret.unavailable",
+            message="secret provider unavailable",
+        )
