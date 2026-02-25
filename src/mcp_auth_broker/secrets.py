@@ -27,7 +27,7 @@ class SecretReference:
                 message="secret reference must start with op://",
             )
 
-        parts = value[len("op://") :].split("/")
+        parts = value[len("op://"):].split("/")
         if len(parts) != 3 or not all(parts):
             raise SecretProviderError(
                 code="bad_request.invalid_field",
