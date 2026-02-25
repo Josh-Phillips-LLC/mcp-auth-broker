@@ -7,6 +7,7 @@ from uuid import uuid4
 from .audit import AuditEmitter
 from .config import BrokerConfig
 from .policy import evaluate_policy
+from .secrets import OnePasswordSecretProvider, SecretProvider, SecretProviderError
 
 TOOL_NAME = "auth.graph.operation.execute.v1"
 
@@ -23,9 +24,11 @@ class MCPAuthBrokerServer:
         self,
         config: BrokerConfig | None = None,
         audit: AuditEmitter | None = None,
+        secret_provider: SecretProvider | None = None,
     ) -> None:
         self.config = config or BrokerConfig.from_env()
         self.audit = audit or AuditEmitter()
+        self.secret_provider = secret_provider or self._build_secret_provider()
         self._tools = [
             ToolDefinition(
                 name=TOOL_NAME,
@@ -120,6 +123,18 @@ class MCPAuthBrokerServer:
                 },
             )
             return response
+
+        secret_error = self._resolve_graph_secret(request_id=request_id)
+        if secret_error is not None:
+            self.audit.emit(
+                config=self.config,
+                event_type="result.emitted",
+                request=request,
+                trace_id=trace_id,
+                payload={"status": "error", "error_code": secret_error["error"]["code"], "duration_ms": 0},
+                redactions=[{"field": "error.metadata.secret_value", "reason": "sensitive"}],
+            )
+            return secret_error
 
         self.audit.emit(
             config=self.config,
@@ -239,3 +254,31 @@ class MCPAuthBrokerServer:
             },
             "redactions": [],
         }
+
+    def _build_secret_provider(self) -> SecretProvider | None:
+        if self.config.secret_provider_mode == "1password":
+            return OnePasswordSecretProvider()
+        return None
+
+    def _resolve_graph_secret(self, *, request_id: str) -> dict[str, Any] | None:
+        if self.secret_provider is None or self.config.graph_secret_reference is None:
+            return None
+
+        try:
+            secret_value = self.secret_provider.resolve(self.config.graph_secret_reference)
+        except SecretProviderError as exc:
+            return self._error_response(
+                request_id=request_id,
+                code=exc.code,
+                message=exc.message,
+                metadata={"reference": self.config.graph_secret_reference.to_uri()},
+            )
+
+        if not secret_value:
+            return self._error_response(
+                request_id=request_id,
+                code="secret.not_found",
+                message="secret reference returned empty value",
+                metadata={"reference": self.config.graph_secret_reference.to_uri()},
+            )
+        return None

@@ -48,3 +48,17 @@ docker build -t mcp-auth-broker:local .
 - Deterministic baseline policy behavior:
 	- Allow reason: `policy.rule.allow.graph.user.read`
 	- Deny reason: `policy.rule.deny.scope.not_permitted`
+
+## Secret Provider (M2)
+
+- Secret provider abstraction with 1Password service-account adapter
+- Configure via environment:
+	- `MCP_AUTH_BROKER_SECRET_PROVIDER=1password`
+	- `MCP_AUTH_BROKER_GRAPH_SECRET_REF=op://<vault>/<item>/<field>`
+	- `OP_SERVICE_ACCOUNT_TOKEN=<token>`
+- Deterministic secret error codes:
+	- `secret.not_found`
+	- `secret.access_denied`
+	- `secret.timeout`
+	- `secret.unavailable`
+- Setup runbook: `docs/runbook-1password-service-account.md`
