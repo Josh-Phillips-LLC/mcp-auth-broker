@@ -12,11 +12,10 @@ Bootstrap baseline for the MCP Auth Broker implementation track.
 ## Quick Start
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -e .
-pip install -r requirements-dev.txt
+python -m pip install -e '.[dev]'
 ```
 
 ## Local Validation Commands

@@ -10,6 +10,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+	"ruff==0.6.9",
+	"pytest==8.3.3",
+]
+
 [project.scripts]
 mcp-auth-broker = "mcp_auth_broker.cli:main"
 

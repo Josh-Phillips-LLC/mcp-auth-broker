@@ -17,6 +17,7 @@ This document establishes the runtime, scaffolding, and CI baseline required by 
 
 - `src/mcp_auth_broker/`: production package modules.
 - `tests/`: unit tests only (no integration or provider-specific auth tests in bootstrap).
+- `pyproject.toml`: runtime + pinned dev dependency definitions.
 - `.github/workflows/ci.yml`: baseline automation.
 
 ## Unblock Condition for M0 (#3)

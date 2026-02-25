@@ -2,7 +2,7 @@
 
 ## Baseline Rules
 
-- Development and quality-tool dependencies are pinned in `requirements-dev.txt`.
+- Development and quality-tool dependencies are pinned in `pyproject.toml` under `[project.optional-dependencies].dev`.
 - Runtime dependencies are declared in `pyproject.toml`.
 - Any new dependency must include a rationale in the PR description.
 
