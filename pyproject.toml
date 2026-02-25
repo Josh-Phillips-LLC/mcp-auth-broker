@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-auth-broker"
+version = "0.1.0"
+description = "Bootstrap baseline for MCP Auth Broker"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+	"ruff==0.6.9",
+	"pytest==8.3.3",
+]
+
+[project.scripts]
+mcp-auth-broker = "mcp_auth_broker.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
