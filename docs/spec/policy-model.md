@@ -4,6 +4,12 @@
 
 - Policy model version: `v0.1.0`
 
+## Versioning and Compatibility
+
+- Patch updates (`v0.1.x`) may clarify semantics and add optional metadata fields.
+- Minor updates (`v0.x.0`) may add reason codes but must not rename or remove existing stable codes.
+- Breaking policy contract changes require a new major version and migration notes.
+
 ## Decision Contract
 
 Every policy evaluation must produce the following structure:

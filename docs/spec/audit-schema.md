@@ -4,6 +4,12 @@
 
 - Audit schema version: `v0.1.0`
 
+## Versioning and Compatibility
+
+- Patch updates (`v0.1.x`) may add optional payload fields and clarifications.
+- Minor updates (`v0.x.0`) may add new event types but must preserve existing envelope fields.
+- Breaking schema changes require a new major version and dual-write migration guidance.
+
 ## Required Event Types
 
 The schema must represent at minimum these events per request flow:

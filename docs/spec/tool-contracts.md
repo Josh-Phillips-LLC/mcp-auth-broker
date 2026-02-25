@@ -5,9 +5,15 @@
 - Contract set version: `v0.1.0`
 - Status: Draft for implementation handoff to M1
 
+## Versioning and Compatibility
+
+- Patch version updates (`v0.1.x`) may clarify wording and add non-breaking optional fields.
+- Minor version updates (`v0.x.0`) may add new tools or optional fields but must not break existing required fields.
+- Breaking changes require a new major contract line and explicit migration guidance.
+
 ## Scope
 
-This document defines canonical request/response contracts for the phase-1 Graph token path.
+This document defines canonical request/response contracts for the phase-1 Graph broker-executed operation path.
 
 ## Contract Rules
 
@@ -16,9 +22,9 @@ This document defines canonical request/response contracts for the phase-1 Graph
 3. Unknown request fields are rejected with `bad_request.invalid_field`.
 4. Sensitive fields are redacted by default in all responses.
 
-## Tool: `auth.graph.token.acquire.v1`
+## Tool: `auth.graph.operation.execute.v1`
 
-Purpose: evaluate policy and, if allowed, acquire a Microsoft Graph access token for broker-managed downstream execution.
+Purpose: evaluate policy and, if allowed, execute a broker-managed Microsoft Graph downstream operation. Token acquisition is internal-only and raw tokens are never returned.
 
 ### Request Schema
 
@@ -45,6 +51,13 @@ Purpose: evaluate policy and, if allowed, acquire a Microsoft Graph access token
   "timeout_ms": 10000
 }
 ```
+
+### `operation.headers` Forwarding Constraints
+
+- Allowed forward headers: `accept`, `content-type`, `if-match`, `prefer`, `consistency-level`.
+- Blocked headers (always stripped): `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key`.
+- Header names are normalized to lowercase before validation.
+- Unknown headers are rejected with `bad_request.invalid_field`.
 
 ### Success Response Schema
 

@@ -4,6 +4,12 @@
 
 - Non-functional contract version: `v0.1.0`
 
+## Versioning and Compatibility
+
+- Patch updates (`v0.1.x`) may adjust narrative clarifications and non-breaking defaults.
+- Minor updates (`v0.x.0`) may tighten operational targets where backward compatible.
+- Breaking runtime expectation changes require a new major version and explicit rollout plan.
+
 ## Timeout Expectations
 
 - End-to-end request timeout default: `10000ms`.
