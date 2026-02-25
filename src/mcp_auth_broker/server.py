@@ -19,7 +19,11 @@ class ToolDefinition:
 
 
 class MCPAuthBrokerServer:
-    def __init__(self, config: BrokerConfig | None = None, audit: AuditEmitter | None = None) -> None:
+    def __init__(
+        self,
+        config: BrokerConfig | None = None,
+        audit: AuditEmitter | None = None,
+    ) -> None:
         self.config = config or BrokerConfig.from_env()
         self.audit = audit or AuditEmitter()
         self._tools = [
@@ -109,7 +113,11 @@ class MCPAuthBrokerServer:
                 event_type="result.emitted",
                 request=request,
                 trace_id=trace_id,
-                payload={"status": "error", "error_code": response["error"]["code"], "duration_ms": 0},
+                payload={
+                    "status": "error",
+                    "error_code": response["error"]["code"],
+                    "duration_ms": 0,
+                },
             )
             return response
 
@@ -175,7 +183,13 @@ class MCPAuthBrokerServer:
                 metadata={"fields": unknown_fields},
             )
 
-        required_fields = ["contract_version", "request_id", "requester", "graph", "operation"]
+        required_fields = [
+            "contract_version",
+            "request_id",
+            "requester",
+            "graph",
+            "operation",
+        ]
         missing_fields = [field for field in required_fields if field not in request]
         if missing_fields:
             return self._error_response(
