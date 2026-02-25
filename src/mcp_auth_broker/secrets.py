@@ -27,7 +27,7 @@ class SecretReference:
                 message="secret reference must start with op://",
             )
 
-        parts = value[len("op://"):].split("/")
+        parts = value[len("op://") :].split("/")
         if len(parts) != 3 or not all(parts):
             raise SecretProviderError(
                 code="bad_request.invalid_field",
@@ -41,8 +41,7 @@ class SecretReference:
 
 
 class SecretProvider(Protocol):
-    def resolve(self, reference: SecretReference) -> str:
-        ...
+    def resolve(self, reference: SecretReference) -> str: ...
 
 
 class OnePasswordSecretProvider:
