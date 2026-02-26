@@ -1,6 +1,8 @@
 from mcp_auth_broker import MCPAuthBrokerServer, main
 from mcp_auth_broker.audit import AuditEmitter
 from mcp_auth_broker.config import BrokerConfig
+from mcp_auth_broker.secrets import SecretReference
+from mcp_auth_broker.secrets import SecretProviderError
 from mcp_auth_broker.server import TOOL_NAME
 
 
@@ -12,6 +14,8 @@ def _config() -> BrokerConfig:
         policy_version="v0.1.0",
         default_timeout_ms=10000,
         allowed_scopes=("User.Read",),
+        secret_provider_mode="none",
+        graph_secret_reference=None,
     )
 
 
@@ -72,6 +76,39 @@ def test_deny_path_returns_stable_reason_code():
     assert response["status"] == "error"
     assert response["error"]["code"] == "policy.denied"
     assert response["error"]["metadata"]["reason_code"] == "policy.rule.deny.scope.not_permitted"
+    assert [event["event_type"] for event in audit.events] == [
+        "request.received",
+        "policy.decided",
+        "result.emitted",
+    ]
+
+
+class _FailingSecretProvider:
+    def resolve(self, reference):
+        raise SecretProviderError(code="secret.access_denied", message="secret access denied")
+
+
+def test_secret_provider_failure_returns_deterministic_error_code():
+    audit = AuditEmitter(emit_to_stdout=False)
+    server = MCPAuthBrokerServer(
+        config=BrokerConfig(
+            environment="test",
+            service_name="mcp-auth-broker",
+            contract_version="v0.1.0",
+            policy_version="v0.1.0",
+            default_timeout_ms=10000,
+            allowed_scopes=("User.Read",),
+            secret_provider_mode="1password",
+            graph_secret_reference=SecretReference.parse("op://vault/item/field"),
+        ),
+        audit=audit,
+        secret_provider=_FailingSecretProvider(),
+    )
+
+    response = server.execute_tool(TOOL_NAME, _allow_request())
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "secret.access_denied"
     assert [event["event_type"] for event in audit.events] == [
         "request.received",
         "policy.decided",
