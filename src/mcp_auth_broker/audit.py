@@ -7,6 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 from .config import BrokerConfig
+from .redaction import redact_payload
 
 
 @dataclass
@@ -25,6 +26,7 @@ class AuditEmitter:
         redactions: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         requester = request.get("requester") or {}
+        safe_payload, payload_redactions = redact_payload(payload)
         event = {
             "schema_version": config.contract_version,
             "event_type": event_type,
@@ -35,8 +37,8 @@ class AuditEmitter:
             "requester_id": requester.get("requester_id", ""),
             "service": config.service_name,
             "environment": config.environment,
-            "redactions": redactions or [],
-            "payload": payload,
+            "redactions": [*(redactions or []), *payload_redactions],
+            "payload": safe_payload,
         }
         self.events.append(event)
         if self.emit_to_stdout:

@@ -32,6 +32,8 @@ python -m mcp_auth_broker.cli tools
 ruff format --check .
 ruff check .
 pytest
+python scripts/check_licenses.py
+./scripts/container-smoke-e2e.sh
 docker build -t mcp-auth-broker:local .
 ```
 
@@ -75,3 +77,14 @@ docker build -t mcp-auth-broker:local .
 	- scope allowlist deny: `policy.invalid_scope`
 	- token provider failures: `provider.auth_failed|provider.timeout|provider.unavailable|provider.bad_response`
 - Token material is never returned in response payloads; only token metadata is emitted.
+
+## M4 Hardening and Operations
+
+- Container runtime includes healthcheck and hardened Python defaults (`PYTHONDONTWRITEBYTECODE`, `PYTHONUNBUFFERED`)
+- CI hardening checks include:
+	- repository secret scan (`gitleaks`)
+	- dependency vulnerability scan (`pip-audit`)
+	- dependency license policy scan (`scripts/check_licenses.py`)
+	- containerized smoke E2E (`scripts/container-smoke-e2e.sh`)
+- Smoke E2E validates broker request/policy/secret/token-response flow with deterministic in-process smoke providers (not live 1Password/Graph calls).
+- Operations runbook: `docs/runbook-operations.md`

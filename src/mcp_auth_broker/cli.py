@@ -5,6 +5,7 @@ import json
 from typing import Sequence
 
 from .server import MCPAuthBrokerServer
+from .smoke import run_smoke_e2e
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -13,7 +14,7 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="run",
-        choices=["run", "health", "ready", "tools"],
+        choices=["run", "health", "ready", "tools", "smoke-e2e"],
         help="Command to execute",
     )
     return parser
@@ -34,6 +35,10 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.command == "tools":
         print(json.dumps(server.discover_tools(), sort_keys=True))
+        return
+
+    if args.command == "smoke-e2e":
+        print(json.dumps(run_smoke_e2e(), sort_keys=True))
         return
 
     payload = {
