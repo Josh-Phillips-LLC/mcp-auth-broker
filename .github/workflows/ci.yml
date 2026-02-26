@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]'
+          python -m pip install pip-audit==2.7.3 pip-licenses==4.4.0
 
       - name: Format check
         run: ruff format --check .
@@ -37,5 +38,19 @@ jobs:
       - name: Unit tests
         run: pytest
 
+      - name: Secret scan (repository)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dependency vulnerability scan
+        run: pip-audit --strict
+
+      - name: License policy scan
+        run: python scripts/check_licenses.py
+
       - name: Container build
         run: docker build -t mcp-auth-broker:ci .
+
+      - name: Container smoke E2E
+        run: ./scripts/container-smoke-e2e.sh
