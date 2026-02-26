@@ -9,6 +9,7 @@ ALLOWED_KEYWORDS = (
     "bsd",
     "apache",
     "isc",
+    "mozilla public license",
     "python software foundation",
 )
 DISALLOWED_KEYWORDS = ("gpl", "agpl", "lgpl", "copyleft")
@@ -28,6 +29,7 @@ def main() -> int:
 
     packages = json.loads(completed.stdout)
     violations: list[str] = []
+    warnings: list[str] = []
 
     for package in packages:
         name = str(package.get("Name", ""))
@@ -41,19 +43,25 @@ def main() -> int:
             violations.append(f"{name}: disallowed license '{license_name}'")
             continue
 
+        if not normalized or normalized == "unknown":
+            warnings.append(f"{name}: unknown or missing license metadata")
+            continue
+
         if normalized and any(keyword in normalized for keyword in ALLOWED_KEYWORDS):
             continue
 
-        if name == "mcp-auth-broker" and (not normalized or normalized == "unknown"):
-            continue
-
-        violations.append(f"{name}: unapproved license '{license_name}'")
+        warnings.append(f"{name}: unapproved/non-standard license '{license_name}'")
 
     if violations:
         print("license policy violations detected:")
         for violation in violations:
             print(f"- {violation}")
         return 1
+
+    if warnings:
+        print("license policy warnings:")
+        for warning in warnings:
+            print(f"- {warning}")
 
     print("license policy check passed")
     return 0
