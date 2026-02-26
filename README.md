@@ -62,3 +62,16 @@ docker build -t mcp-auth-broker:local .
 	- `secret.timeout`
 	- `secret.unavailable`
 - Setup runbook: `docs/runbook-1password-service-account.md`
+
+## Graph Token Provider + Cache (M3)
+
+- OAuth2 client-credentials token provider for Microsoft Graph
+- In-memory cache keyed by tenant/client/scopes with:
+	- pre-expiry skew safety buffer
+	- max effective TTL clamp
+	- no expired-token return
+- Deterministic allowlist and provider error behavior:
+	- provider allowlist deny: `policy.denied`
+	- scope allowlist deny: `policy.invalid_scope`
+	- token provider failures: `provider.auth_failed|provider.timeout|provider.unavailable|provider.bad_response`
+- Token material is never returned in response payloads; only token metadata is emitted.

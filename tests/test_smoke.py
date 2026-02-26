@@ -1,6 +1,7 @@
 from mcp_auth_broker import MCPAuthBrokerServer, main
 from mcp_auth_broker.audit import AuditEmitter
 from mcp_auth_broker.config import BrokerConfig
+from mcp_auth_broker.graph_tokens import GraphTokenProviderError
 from mcp_auth_broker.secrets import SecretReference
 from mcp_auth_broker.secrets import SecretProviderError
 from mcp_auth_broker.server import TOOL_NAME
@@ -16,6 +17,11 @@ def _config() -> BrokerConfig:
         allowed_scopes=("User.Read",),
         secret_provider_mode="none",
         graph_secret_reference=None,
+        graph_client_id="",
+        allowed_graph_resources=("https://graph.microsoft.com",),
+        token_cache_skew_seconds=60,
+        token_max_ttl_seconds=3000,
+        token_provider_timeout_seconds=4,
     )
 
 
@@ -57,6 +63,7 @@ def test_allow_path_invokes_policy_and_audit_lifecycle():
     assert response["status"] == "ok"
     assert response["result"]["policy"]["decision"] == "allow"
     assert response["result"]["policy"]["reason"] == "policy.rule.allow.graph.user.read"
+    assert response["result"]["execution"]["response_body"]["token_metadata"] is None
     assert [event["event_type"] for event in audit.events] == [
         "request.received",
         "policy.decided",
@@ -88,6 +95,29 @@ class _FailingSecretProvider:
         raise SecretProviderError(code="secret.access_denied", message="secret access denied")
 
 
+class _FakeTokenResult:
+    def __init__(self):
+        self.token = "redacted"
+        self.metadata = {
+            "tenant_id": "tenant-1",
+            "resource": "https://graph.microsoft.com",
+            "scopes": ["User.Read"],
+            "token_type": "Bearer",
+            "expires_at_epoch": 999999,
+            "source": "minted",
+        }
+
+
+class _FakeTokenProvider:
+    def get_token(self, *, tenant_id, resource, scopes, force_refresh=False, now_epoch=None):
+        return _FakeTokenResult()
+
+
+class _FailingTokenProvider:
+    def get_token(self, *, tenant_id, resource, scopes, force_refresh=False, now_epoch=None):
+        raise GraphTokenProviderError("provider.unavailable", "token provider unavailable")
+
+
 def test_secret_provider_failure_returns_deterministic_error_code():
     audit = AuditEmitter(emit_to_stdout=False)
     server = MCPAuthBrokerServer(
@@ -100,6 +130,11 @@ def test_secret_provider_failure_returns_deterministic_error_code():
             allowed_scopes=("User.Read",),
             secret_provider_mode="1password",
             graph_secret_reference=SecretReference.parse("op://vault/item/field"),
+            graph_client_id="test-client",
+            allowed_graph_resources=("https://graph.microsoft.com",),
+            token_cache_skew_seconds=60,
+            token_max_ttl_seconds=3000,
+            token_provider_timeout_seconds=4,
         ),
         audit=audit,
         secret_provider=_FailingSecretProvider(),
@@ -114,3 +149,32 @@ def test_secret_provider_failure_returns_deterministic_error_code():
         "policy.decided",
         "result.emitted",
     ]
+
+
+def test_server_returns_token_metadata_without_token_value():
+    audit = AuditEmitter(emit_to_stdout=False)
+    server = MCPAuthBrokerServer(
+        config=_config(),
+        audit=audit,
+        token_provider=_FakeTokenProvider(),
+    )
+
+    response = server.execute_tool(TOOL_NAME, _allow_request())
+
+    assert response["status"] == "ok"
+    assert response["result"]["execution"]["response_body"]["token_metadata"]["source"] == "minted"
+    assert "token" not in response["result"]["execution"]["response_body"]
+
+
+def test_server_maps_token_provider_failure_deterministically():
+    audit = AuditEmitter(emit_to_stdout=False)
+    server = MCPAuthBrokerServer(
+        config=_config(),
+        audit=audit,
+        token_provider=_FailingTokenProvider(),
+    )
+
+    response = server.execute_tool(TOOL_NAME, _allow_request())
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "provider.unavailable"

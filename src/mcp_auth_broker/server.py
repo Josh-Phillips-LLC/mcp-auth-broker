@@ -6,8 +6,10 @@ from uuid import uuid4
 
 from .audit import AuditEmitter
 from .config import BrokerConfig
+from .graph_tokens import GraphTokenProvider
+from .graph_tokens import GraphTokenProviderError
 from .policy import evaluate_policy
-from .secrets import OnePasswordSecretProvider, SecretProvider, SecretProviderError
+from .secrets import OnePasswordSecretProvider, SecretProvider
 
 TOOL_NAME = "auth.graph.operation.execute.v1"
 
@@ -25,10 +27,12 @@ class MCPAuthBrokerServer:
         config: BrokerConfig | None = None,
         audit: AuditEmitter | None = None,
         secret_provider: SecretProvider | None = None,
+        token_provider: GraphTokenProvider | None = None,
     ) -> None:
         self.config = config or BrokerConfig.from_env()
         self.audit = audit or AuditEmitter()
         self.secret_provider = secret_provider or self._build_secret_provider()
+        self.token_provider = token_provider or self._build_token_provider()
         self._tools = [
             ToolDefinition(
                 name=TOOL_NAME,
@@ -124,8 +128,11 @@ class MCPAuthBrokerServer:
             )
             return response
 
-        secret_error = self._resolve_graph_secret(request_id=request_id)
-        if secret_error is not None:
+        token_result, token_error = self._resolve_graph_token(
+            request_id=request_id,
+            graph=request["graph"],
+        )
+        if token_error is not None:
             self.audit.emit(
                 config=self.config,
                 event_type="result.emitted",
@@ -133,12 +140,12 @@ class MCPAuthBrokerServer:
                 trace_id=trace_id,
                 payload={
                     "status": "error",
-                    "error_code": secret_error["error"]["code"],
+                    "error_code": token_error["error"]["code"],
                     "duration_ms": 0,
                 },
                 redactions=[{"field": "error.metadata.secret_value", "reason": "sensitive"}],
             )
-            return secret_error
+            return token_error
 
         self.audit.emit(
             config=self.config,
@@ -170,7 +177,10 @@ class MCPAuthBrokerServer:
                     "provider_request_id": str(uuid4()),
                     "http_status": 200,
                     "response_headers": {},
-                    "response_body": {"ok": True},
+                    "response_body": {
+                        "ok": True,
+                        "token_metadata": token_result,
+                    },
                 },
                 "redactions": [],
             },
@@ -264,25 +274,60 @@ class MCPAuthBrokerServer:
             return OnePasswordSecretProvider()
         return None
 
-    def _resolve_graph_secret(self, *, request_id: str) -> dict[str, Any] | None:
-        if self.secret_provider is None or self.config.graph_secret_reference is None:
+    def _build_token_provider(self) -> GraphTokenProvider | None:
+        if (
+            self.secret_provider is None
+            or self.config.graph_secret_reference is None
+            or not self.config.graph_client_id
+        ):
             return None
 
+        return GraphTokenProvider(
+            client_id=self.config.graph_client_id,
+            secret_reference=self.config.graph_secret_reference,
+            secret_provider=self.secret_provider,
+            allowed_resources=self.config.allowed_graph_resources,
+            allowed_scopes=self.config.allowed_scopes,
+            cache_skew_seconds=self.config.token_cache_skew_seconds,
+            max_ttl_seconds=self.config.token_max_ttl_seconds,
+            timeout_seconds=self.config.token_provider_timeout_seconds,
+        )
+
+    def _resolve_graph_token(
+        self,
+        *,
+        request_id: str,
+        graph: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        if self.token_provider is None:
+            return None, None
+
+        tenant_id = str(graph.get("tenant_id") or "")
+        resource = str(graph.get("resource") or "")
+        scopes = graph.get("scopes") if isinstance(graph.get("scopes"), list) else []
+        scopes = [str(scope) for scope in scopes]
+
         try:
-            secret_value = self.secret_provider.resolve(self.config.graph_secret_reference)
-        except SecretProviderError as exc:
-            return self._error_response(
+            token_result = self.token_provider.get_token(
+                tenant_id=tenant_id,
+                resource=resource,
+                scopes=scopes,
+            )
+            return token_result.metadata, None
+        except GraphTokenProviderError as exc:
+            metadata: dict[str, Any] = {
+                "tenant_id": tenant_id,
+                "resource": resource,
+                "scopes": scopes,
+            }
+            if exc.code == "policy.denied":
+                metadata["reason_code"] = "policy.rule.deny.provider.not_permitted"
+            if exc.code == "policy.invalid_scope":
+                metadata["reason_code"] = "policy.rule.deny.scope.not_permitted"
+
+            return None, self._error_response(
                 request_id=request_id,
                 code=exc.code,
                 message=exc.message,
-                metadata={"reference": self.config.graph_secret_reference.to_uri()},
+                metadata=metadata,
             )
-
-        if not secret_value:
-            return self._error_response(
-                request_id=request_id,
-                code="secret.not_found",
-                message="secret reference returned empty value",
-                metadata={"reference": self.config.graph_secret_reference.to_uri()},
-            )
-        return None
