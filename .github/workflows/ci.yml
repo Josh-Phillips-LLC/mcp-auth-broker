@@ -45,7 +45,7 @@ jobs:
 
       - name: Dependency vulnerability scan
         run: |
-          python -m pip freeze | grep -v '^mcp-auth-broker' > /tmp/third_party_requirements.txt
+          python -m pip freeze | grep -Evi '^(mcp[-_]auth[-_]broker)([[:space:]]|==|@|$)' > /tmp/third_party_requirements.txt
           pip-audit --strict -r /tmp/third_party_requirements.txt
 
       - name: License policy scan
