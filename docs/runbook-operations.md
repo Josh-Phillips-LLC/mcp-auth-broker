@@ -41,6 +41,7 @@ docker run --rm mcp-auth-broker:local python -m mcp_auth_broker.cli health
 - End-to-end smoke path:
   - `python -m mcp_auth_broker.cli smoke-e2e`
   - `./scripts/container-smoke-e2e.sh`
+  - Note: smoke-e2e uses deterministic in-process smoke providers and validates broker orchestration flow, not live 1Password/Graph integration.
 
 ## Hardening Verification Checklist
 

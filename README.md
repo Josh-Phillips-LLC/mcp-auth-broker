@@ -86,4 +86,5 @@ docker build -t mcp-auth-broker:local .
 	- dependency vulnerability scan (`pip-audit`)
 	- dependency license policy scan (`scripts/check_licenses.py`)
 	- containerized smoke E2E (`scripts/container-smoke-e2e.sh`)
+- Smoke E2E validates broker request/policy/secret/token-response flow with deterministic in-process smoke providers (not live 1Password/Graph calls).
 - Operations runbook: `docs/runbook-operations.md`
